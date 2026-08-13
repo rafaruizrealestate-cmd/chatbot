@@ -5,6 +5,7 @@ import {
   hasPropertySearchIntent,
   wantsBroadCatalogListing,
 } from "./propertySearch.js";
+import { wantsListingLink } from "./customerPropertyMessage.js";
 
 describe("extractPropertySearchSignals — Mambo", () => {
   it("reconoce Vélez-Málaga y no lo colapsa a Málaga", () => {
@@ -24,5 +25,13 @@ describe("hasPropertySearchIntent", () => {
   it("trata 'viviendas más baratas' como búsqueda de catálogo", () => {
     assert.equal(hasPropertySearchIntent("viviendas más baratas"), true);
     assert.equal(wantsBroadCatalogListing("viviendas más baratas"), true);
+  });
+});
+
+describe("wantsListingLink", () => {
+  it("detecta pedir el enlace o las fotos", () => {
+    assert.equal(wantsListingLink("pásame el enlace del anuncio"), true);
+    assert.equal(wantsListingLink("quiero ver las fotos"), true);
+    assert.equal(wantsListingLink("ok gracias"), false);
   });
 });

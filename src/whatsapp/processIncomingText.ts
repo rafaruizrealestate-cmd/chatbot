@@ -66,7 +66,11 @@ import {
   extractRefFromNumberedChoice,
   isPropertyBrowseOrSelectTurn,
 } from "./propertySearch.js";
-import type { CustomerPropertyMessageOpts } from "./customerPropertyMessage.js";
+import {
+  formatListingLinkReply,
+  wantsListingLink,
+  type CustomerPropertyMessageOpts,
+} from "./customerPropertyMessage.js";
 import { enrichPropertyWithAgent, loadPropertyByRef, resolveAssignedAgent } from "../knowledge/propertyAgent.js";
 import { isAdministrativeConversation } from "./administrativeTopics.js";
 import { isOwnerListingIntent, resolveLeadIntent } from "./intent.js";
@@ -1328,6 +1332,14 @@ export async function processIncomingText(
   } else if (ownerListingTurn) {
     reply = buildOwnerListingReply(customerName, normalizedText, prev);
     console.log("[whatsapp] Propietario vender/alquilar", { from });
+  } else if (
+    isDirectWhatsApp &&
+    !administrativeConversation &&
+    wantsListingLink(normalizedText) &&
+    conversationProperty
+  ) {
+    reply = formatListingLinkReply(conversationProperty);
+    console.log("[whatsapp] Enlace del anuncio", { from, ref: conversationProperty.ref });
   } else if (
     isDirectWhatsApp &&
     shouldAskNameForHandoff({

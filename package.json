@@ -19,7 +19,7 @@
     "panel:user": "node dist/panel/userCli.js",
     "panel:user:dev": "tsx src/panel/userCli.ts",
     "tunnel": "ngrok http 3002",
-    "test": "tsx --test src/voice/zadarmaAuth.test.ts src/voice/realtimeTools.test.ts src/voice/voiceLeadEmail.test.ts src/utils/portalLeadText.test.ts src/email/classifier.test.ts src/email/emailGuards.test.ts src/knowledge/services.test.ts src/whatsapp/greeting.test.ts src/whatsapp/whatsappLeadFlow.test.ts src/whatsapp/intent.test.ts src/whatsapp/propertySearch.test.ts src/scraper/idealista.test.ts src/knowledge/portalListings.test.ts src/utils/propertyRef.test.ts"
+    "test": "tsx --test src/voice/zadarmaAuth.test.ts src/voice/realtimeTools.test.ts src/voice/voiceLeadEmail.test.ts src/utils/portalLeadText.test.ts src/email/classifier.test.ts src/email/emailGuards.test.ts src/knowledge/services.test.ts src/knowledge/propertyUrl.test.ts src/whatsapp/greeting.test.ts src/whatsapp/whatsappLeadFlow.test.ts src/whatsapp/intent.test.ts src/whatsapp/propertySearch.test.ts src/scraper/idealista.test.ts src/knowledge/portalListings.test.ts src/utils/propertyRef.test.ts"
   },
   "engines": {
     "node": ">=20"

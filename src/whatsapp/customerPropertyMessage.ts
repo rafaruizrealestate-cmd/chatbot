@@ -74,7 +74,9 @@ export function formatCustomerPropertyMessage(opts: CustomerPropertyMessageOpts)
   const url = publicPropertyUrl(p);
 
   const lines = [greeting, "", intro, "", `${p.title} (ref. ${p.ref}): ${specs}.`];
-  if (url) lines.push(url);
+  if (url) {
+    lines.push(`Anuncio (fotos): ${url}`);
+  }
 
   if (agent?.name?.trim() && agent.phone?.trim()) {
     const style =
@@ -92,4 +94,29 @@ export function formatCustomerPropertyMessage(opts: CustomerPropertyMessageOpts)
   }
 
   return lines.join("\n");
+}
+
+/** Pide el enlace del anuncio, fotos o verlo en Idealista. */
+export function wantsListingLink(text: string): boolean {
+  const t = text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (/\b(enlace|link|url)\b/.test(t)) return true;
+  if (/\b(fotos?|fotograf)/.test(t)) return true;
+  if (/\b(ver|pasa(?:me)?|manda(?:me)?|envia(?:me)?|dame)\s+(el\s+)?anuncio\b/.test(t)) return true;
+  if (/\banuncio\s+(de\s+)?idealista\b/.test(t) || /\ben\s+idealista\b/.test(t)) return true;
+  if (/\bidealista\b/.test(t) && /\b(enlace|link|fotos?|anuncio|ver)\b/.test(t)) return true;
+  return false;
+}
+
+export function formatListingLinkReply(p: PropertyRow): string {
+  const url = publicPropertyUrl(p);
+  if (!url) {
+    return `De la ref. ${p.ref} ahora mismo no tengo el enlace del anuncio. Si quieres, te paso más detalles o te pongo con el comercial.`;
+  }
+  return [
+    `Aquí tienes el anuncio para ver las fotos y los detalles (ref. ${p.ref}):`,
+    url,
+  ].join("\n");
 }

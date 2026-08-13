@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { config, assertOpenAiConfigured } from "../config.js";
 import { searchPropertiesTool } from "./functions.js";
 import { searchProperties, type PropertyRow } from "../knowledge/properties.js";
+import { isAllowedCustomerListingUrl, publicPropertyUrl } from "../knowledge/propertyUrl.js";
 import { buildKnowledgeContext } from "./rag.js";
 import { formatAgentPhoneEs } from "../leads/agentNotification.js";
 import { buildPropertySearchPromptBlock, buildOngoingPropertyConversationBlock } from "../whatsapp/propertySearch.js";
@@ -80,7 +81,9 @@ ${languageRule}
 
 - Si no hay resultados tras buscar: pregunta un dato más o, si ya hay varios datos y la ref no existe, di brevemente que no tenéis esa propiedad e invita a ${web}. No inventes fichas ni des párrafos de "no he encontrado en nuestra base de datos".
 
-- Cuando cites propiedades, sé breve: título, ref, precio, m², habitaciones, zona y enlace. NO listes todas las características ni pegues la descripción completa (máx. 4-5 líneas).
+- Cuando cites propiedades, sé breve: título, ref, precio, m², habitaciones, zona y el enlace del anuncio (campo url de search_properties). NO listes todas las características ni pegues la descripción completa (máx. 4-5 líneas).
+- Si el cliente pide el enlace, fotos, el anuncio o verlo online: pega SIEMPRE el url de search_properties (Idealista de NUESTRA cartera). No sustituyas el enlace por la dirección de la calle: la dirección no abre las fotos.
+- No des el portal y número de la calle como si fuera el enlace. Zona sí; enlace del anuncio sí.
 
 - Si el cliente busca **piso, estudio o vivienda** en alquiler/compra: NO mezcles Oficina, Local, Garaje, Nave, Terreno ni habitaciones en piso compartido. Solo viviendas (Piso, Estudio, Ático, Chalet, Adosado, Dúplex…).
 - Si el cliente pide **local, local comercial, oficina, nave, traspaso o negocio**: SÍ los gestionáis. Usa search_properties con property_type Local u Oficina, o transaction_type Traspaso. NUNCA digas que no tenéis locales u oficinas: buscad primero en cartera y, si no hay resultados, dilo tras buscar e invita a la web.
@@ -97,7 +100,7 @@ ${languageRule}
 
 - No des direcciones exactas, SOLO zona, ciudad, barrio o calles cercanas.
 
-- PROHIBIDO recomendar otras agencias, portales o webs de terceros (incluyendo Idealista, Fotocasa o cualquier inmobiliaria externa). Solo ofrece inmuebles y contactos de ${config.agencyName}.
+- PROHIBIDO recomendar otras agencias o decirle que busque por su cuenta en portales. SÍ debes enviar el enlace de Idealista de NUESTROS anuncios (es el anuncio de Mambo, con fotos).
 
 - NO filtres al cliente por ingresos, avalista ni documentación: eso lo gestiona el agente humano después.
 
@@ -119,9 +122,8 @@ ${BAZAN_SERVICES_PROMPT_BLOCK}${kb}`;
 }
 
 function includesExternalAgencyContent(reply: string): boolean {
-  const t = reply.toLowerCase();
+  const t = stripAllowedListingUrls(reply).toLowerCase();
   const knownExternalMentions = [
-    "idealista",
     "fotocasa",
     "habitaclia",
     "pisos.com",
@@ -131,6 +133,8 @@ function includesExternalAgencyContent(reply: string): boolean {
     "te recomiendo contactar",
   ];
   if (knownExternalMentions.some((needle) => t.includes(needle))) return true;
+  // "idealista" solo es problema si no es nuestro enlace de anuncio (ya recortado).
+  if (/\bidealista\b/.test(t) && !/\/inmueble\/\d{6,12}/i.test(reply)) return true;
   // "agencia inmobiliaria" genérico suele ser la nuestra; solo bloquear si recomienda terceros.
   if (/\b(otra|otras|diferente|externa)\s+agencia\b/.test(t)) return true;
 
@@ -140,6 +144,8 @@ function includesExternalAgencyContent(reply: string): boolean {
     "www.inmobiliariabazan.com",
     "mamboinmobiliaria.com",
     "www.mamboinmobiliaria.com",
+    "idealista.com",
+    "www.idealista.com",
   ]);
   let match: RegExpExecArray | null;
   while ((match = domainRegex.exec(reply)) !== null) {
@@ -164,21 +170,25 @@ function safeBazanOnlyFallback(): string {
   ].join("\n");
 }
 
+function stripAllowedListingUrls(reply: string): string {
+  return reply.replace(/https?:\/\/[^\s)>\]]+/gi, (u) => (isAllowedCustomerListingUrl(u) ? " " : u));
+}
+
 function sanitizeExternalMentions(reply: string): string {
-  // 1) Elimina URLs externas (muchos leads pegados desde portales vienen con links de tracking).
+  const kept: string[] = [];
   const urlRegex = /https?:\/\/[^\s)>\]]+/gi;
   let out = reply.replace(urlRegex, (u) => {
     try {
-      const host = new URL(u).hostname.toLowerCase();
-      if (host === "inmobiliariabazan.com" || host === "www.inmobiliariabazan.com") return u;
-      if (host === "mamboinmobiliaria.com" || host === "www.mamboinmobiliaria.com") return u;
+      if (isAllowedCustomerListingUrl(u)) {
+        kept.push(u);
+        return `%%LISTING_URL_${kept.length - 1}%%`;
+      }
       return "";
     } catch {
       return "";
     }
   });
 
-  // 2) Evita mencionar portales externos por nombre (mantiene la respuesta útil).
   out = out
     .replace(/\bidealista\b/gi, "el portal")
     .replace(/\bfotocasa\b/gi, "el portal")
@@ -186,7 +196,8 @@ function sanitizeExternalMentions(reply: string): string {
     .replace(/\bindomio\b/gi, "el portal")
     .replace(/\bhabitaclia\b/gi, "el portal");
 
-  // Limpieza de espacios
+  out = out.replace(/%%LISTING_URL_(\d+)%%/g, (_, i) => kept[Number(i)] ?? "");
+
   out = out
     .replace(/[ \t]{2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")
@@ -228,7 +239,7 @@ function serializePropertyRows(rows: PropertyRow[]): unknown[] {
       location: r.location,
       features,
       description: r.description ? r.description.slice(0, 800) : null,
-      url: r.url,
+      url: publicPropertyUrl(r) ?? r.url,
       agent_name: r.agent_name ?? null,
       agent_phone: r.agent_phone ?? null,
     };

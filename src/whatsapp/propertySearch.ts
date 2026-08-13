@@ -1,4 +1,5 @@
 import { resolvePropertyRefFromCatalog, searchProperties, type PropertyRow } from "../knowledge/properties.js";
+import { publicPropertyUrl } from "../knowledge/propertyUrl.js";
 import {
   extractBarePropertyRef,
   extractPropertyRefFromText,
@@ -9,6 +10,8 @@ import { isGarbageClientName } from "../utils/portalLeadText.js";
 import { guessBuyerTransactionType } from "./intent.js";
 import {
   formatCustomerPropertyMessage,
+  formatListingLinkReply,
+  wantsListingLink,
   type CustomerPropertyMessageOpts,
 } from "./customerPropertyMessage.js";
 
@@ -393,7 +396,9 @@ export function formatPropertyMatches(
     const lines = rows.slice(0, 5).map((p, i) => {
       const price = p.price != null ? `${p.price.toLocaleString("es-ES")} €` : "";
       const zone = p.location?.split(" en ")[0] ?? p.location ?? "";
-      return `${i + 1}. ${p.title} (ref. ${p.ref})${price ? ` — ${price}` : ""}${zone ? ` — ${zone}` : ""}`;
+      const link = publicPropertyUrl(p);
+      const head = `${i + 1}. ${p.title} (ref. ${p.ref})${price ? ` — ${price}` : ""}${zone ? ` — ${zone}` : ""}`;
+      return link ? `${head}\n   ${link}` : head;
     });
     return [
       "He encontrado varias opciones que pueden encajar:",
@@ -547,6 +552,7 @@ export function isPropertyConversationFollowUp(text: string): boolean {
 /** Respuesta fija corta (visita, nombre, hola breve). Lo demás → IA. */
 export function shouldUseStructuredPropertyFollowUp(text: string): boolean {
   const t = text.trim();
+  if (wantsListingLink(text)) return true;
   if (/\b(cuantos|cuántos|cuanto|cuánto|stock|numero|número|listado|catalogo|catálogo)\b/i.test(t)) {
     return false;
   }
@@ -580,6 +586,9 @@ export function buildPropertyFollowUpReply(opts: {
   visitConfirmed?: boolean;
 }): string {
   const { userText, property, customerName, agent, mentionAgent, visitConfirmed } = opts;
+  if (wantsListingLink(userText)) {
+    return formatListingLinkReply(property);
+  }
   const agentName = agent?.name?.trim();
   const contactLine =
     mentionAgent && agentName
@@ -614,7 +623,8 @@ export function buildPropertyFollowUpReply(opts: {
 
 export function buildOngoingPropertyConversationBlock(ref: string): string {
   return `\n\n--- Conversación en curso (ref. ${ref}) ---
-La ficha completa (precio, m², URL) ya se envió al cliente. NO la repitas ni pegues el enlace otra vez.
+La ficha (precio, m²) ya se envió. NO la repitas entera.
+Si pide el enlace, fotos o el anuncio: pega SIEMPRE el url de search_properties (Idealista). No des la dirección de la calle en lugar del enlace.
 Responde de forma natural, breve y coherente a la pregunta actual (visita, dudas, nombre, disponibilidad, etc.).
 Si el cliente busca OTROS inmuebles (otra zona, estudio, 1 hab.), usa search_properties de nuevo y NO reutilices el comercial de ref. ${ref} para otra ficha.
 Si pregunta algo general (p. ej. cuántos alquileres hay), usa search_properties y responde con datos reales.
@@ -631,8 +641,9 @@ export function extractRefFromNumberedChoice(
 
   const lastAssistant = [...history].reverse().find((m) => m.role === "assistant")?.content ?? "";
   const refs = [
-    ...lastAssistant.matchAll(/propiedad\?propiedad=(\d{3,4})/gi),
-    ...lastAssistant.matchAll(/\(ref\.?\s*(\d{3,4})\)/gi),
+    ...lastAssistant.matchAll(/propiedad\?propiedad=(\d{3,12})/gi),
+    ...lastAssistant.matchAll(/inmueble\/(\d{6,12})/gi),
+    ...lastAssistant.matchAll(/\(ref\.?\s*(\d{3,12})\)/gi),
   ]
     .map((m) => m[1]!)
     .filter((r, i, a) => a.indexOf(r) === i);
