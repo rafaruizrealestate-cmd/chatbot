@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+*.db
+*.db-wal
+*.db-shm
+data/
+uploads/
+.DS_Store
+.profiles/
+voice-agent/.venv/
+voice-agent/.env
+# Claves/local del VPS (solo en tu Mac; nunca en Git)
+.local/

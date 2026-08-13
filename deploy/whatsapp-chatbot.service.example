@@ -1,0 +1,20 @@
+# Copiar al VPS:
+#   sudo cp deploy/whatsapp-chatbot.service.example /etc/systemd/system/whatsapp-chatbot.service
+# Editar WorkingDirectory y User si hace falta.
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now whatsapp-chatbot
+
+[Unit]
+Description=WhatsApp Chatbot (Node)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/whatsapp-chatbot
+EnvironmentFile=/opt/whatsapp-chatbot/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

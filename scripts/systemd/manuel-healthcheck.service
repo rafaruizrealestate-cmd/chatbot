@@ -1,0 +1,11 @@
+[Unit]
+Description=Manuel healthcheck (WhatsApp + voz)
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/whatsapp-chatbot-951/scripts/manuel-healthcheck.sh
+Nice=10
+IOSchedulingClass=idle
+# El auto-heal puede recrear el venv de voz (pip install tarda minutos).
+TimeoutStartSec=1200

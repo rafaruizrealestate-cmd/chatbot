@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Panel Manuel · Inmobiliaria Bazán</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>"
+    />
+  </head>
+  <body>
+    <div id="login" class="login hidden">
+      <form class="login-card" id="login-form">
+        <h1>Panel Manuel</h1>
+        <p class="muted">Llamadas del 951, WhatsApp del 614 y acciones de la IA.</p>
+        <label>
+          Usuario
+          <input id="login-user" name="username" autocomplete="username" required />
+        </label>
+        <label>
+          Contraseña
+          <input
+            id="login-pass"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+        <button type="submit">Entrar</button>
+        <p class="error" id="login-error"></p>
+      </form>
+    </div>
+
+    <div id="app" class="app hidden">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-dot"></span>
+          <div>
+            <strong>Manuel</strong>
+            <small>Inmobiliaria Bazán</small>
+          </div>
+        </div>
+        <nav id="nav">
+          <a href="#/resumen" data-route="resumen">Resumen</a>
+          <a href="#/llamadas" data-route="llamadas">Llamadas de voz</a>
+          <a href="#/whatsapp" data-route="whatsapp">WhatsApp</a>
+          <a href="#/desenlace" data-route="desenlace">Desenlace</a>
+          <a href="#/emails" data-route="emails">Emails</a>
+          <a href="#/acciones" data-route="acciones">Acciones de la IA</a>
+          <a href="#/leads" data-route="leads">Leads</a>
+          <a href="#/usuarios" data-route="usuarios" class="admin-only">Usuarios</a>
+        </nav>
+        <div class="sidebar-foot">
+          <div id="who" class="muted"></div>
+          <button id="logout" class="link">Cerrar sesión</button>
+        </div>
+      </aside>
+      <main id="view"><div class="loading">Cargando…</div></main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

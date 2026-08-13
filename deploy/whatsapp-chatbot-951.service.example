@@ -1,0 +1,19 @@
+# Copiar al VPS:
+#   sudo cp deploy/whatsapp-chatbot-951.service.example /etc/systemd/system/whatsapp-chatbot-951.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now whatsapp-chatbot-951
+
+[Unit]
+Description=WhatsApp Chatbot Lara (951)
+After=network.target whatsapp-chatbot.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/whatsapp-chatbot-951
+EnvironmentFile=/opt/whatsapp-chatbot-951/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

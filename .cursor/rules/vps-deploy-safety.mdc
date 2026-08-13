@@ -1,0 +1,82 @@
+---
+description: Seguridad de deploys al VPS — no romper voz/WhatsApp con rsync
+alwaysApply: true
+---
+
+# Deploy VPS (Manuel / whatsapp-chatbot-951)
+
+Incidente 2026-08-04: un `rsync --delete` borró `voice-agent/.venv` y la IA de voz se quedó muda (el servicio seguía "active" pero los workers fallaban con `No module named 'dotenv'`).
+
+## Prohibido
+
+- `rsync --delete` hacia `/opt/whatsapp-chatbot-951` **salvo** que el usuario lo pida explícitamente **y** la lista de `--exclude` esté completa.
+- Borrar, sobrescribir o sincronizar:
+  - `voice-agent/.venv/`
+  - `node_modules/`
+  - `.env` / secretos
+  - `data/` / `*.db` / `*.db-wal` / `*.db-shm`
+  - grabaciones (`data/voice-recordings/`, etc.)
+
+## Deploy permitido (por defecto)
+
+```bash
+rsync -az \
+  --exclude node_modules \
+  --exclude .env \
+  --exclude data \
+  --exclude '*.db' \
+  --exclude '*.db-*' \
+  --exclude dist \
+  --exclude voice-agent/.venv \
+  ./ root@VPS:/opt/whatsapp-chatbot-951/
+```
+
+Sin `--delete` salvo petición explícita.
+
+## Tras cualquier deploy que toque runtime
+
+1. `systemctl is-active whatsapp-chatbot-951 manuel-voice-agent`
+2. `chmod +x /opt/whatsapp-chatbot-951/scripts/*.sh` — rsync copia el bit de ejecución del fichero local, y si allí se perdió, el timer de salud deja de funcionar con "Permission denied"
+3. Ejecutar `/opt/whatsapp-chatbot-951/scripts/manuel-healthcheck.sh` (debe terminar `RESULT=OK`; `RESULT=HEALED` significa que el auto-heal tuvo que reparar algo, revisa qué)
+4. Comprobar en logs del voice agent: `registered worker` / `agent_name: lara`
+5. Si se tocó WhatsApp/Evolution: instancia `bazan-951` en `open`
+6. Si se tocó `npm run build`: comprobar que el panel responde (`https://panel-manuel.crbr5h.easypanel.host/panel/` → 200)
+
+## Grabación de llamadas
+
+`livekit-manuel-egress-1` debe estar levantado: es quien escribe los `.ogg` en `data/voice-recordings`. Si se para, las llamadas siguen funcionando pero el panel se queda sin audios. El healthcheck ya lo vigila.
+
+## Panel web
+
+- Se sirve desde la propia app en `/panel` (estáticos en `public/panel`, API en `/panel/api`).
+- Publicado por Traefik con `/etc/easypanel/traefik/config/manuel-panel.yaml`. **No editar `main.yaml`**: Easypanel lo regenera y se perdería el cambio.
+- Solo se expone `/panel` en ese dominio; webhooks y `/admin` no.
+- Usuarios: `npm run panel:user -- list|create|password|role|disable|delete`.
+
+## Correo y catálogo (traspaso desde Leo, 2026-08-05)
+
+Manuel asumió lo que hacía Leo (`/opt/whatsapp-chatbot`). Dos crons de `root` lo sostienen:
+
+```cron
+*/2 * * * * flock -n /tmp/manuel-email.lock  ... cd /opt/whatsapp-chatbot-951 && npm run email:poll  >> /var/log/manuel-email-poll.log
+15 4  * * * flock -n /tmp/manuel-scrape.lock ... cd /opt/whatsapp-chatbot-951 && npm run scrape      >> /var/log/manuel-scrape.log
+```
+
+- Manuel lee `info@inmobiliariabazan.com` (no `manuel@`: los leads de portales llegan a `info@`). El de Leo está apagado (`EMAIL_ENABLED=0` + su cron eliminado); no reactivar los dos a la vez o el cliente recibe respuestas duplicadas.
+- La deduplicación va por UID de IMAP en `email_state`. Si se estrena una base de datos vacía contra un buzón con histórico, hay que sembrar esa tabla antes de arrancar: sin no leídos, el poll tira de los 30 recientes ya leídos y volvería a contestarlos.
+- El catálogo ya no depende de Leo: `PROPERTIES_DATABASE_PATH` está comentado, así que `properties` vive en `manuel.db` y es escribible. Si se vuelve a apuntar a la base de Leo, se abre en **solo lectura** y el scrape deja de servir de nada.
+
+## Si hay que recrear el venv de voz
+
+Solo si está roto. No como parte rutinaria del deploy de TypeScript:
+
+```bash
+cd /opt/whatsapp-chatbot-951/voice-agent
+python3.12 -m venv .venv
+./.venv/bin/pip install -r requirements.txt
+systemctl restart manuel-voice-agent
+```
+
+## WhatsApp
+
+Responder por `@lid` cuando exista; no asumir que el envío al E.164 siempre entrega. No recrear la instancia Evolution sin necesidad (rompe cachés LID).

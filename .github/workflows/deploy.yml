@@ -1,0 +1,63 @@
+# CI en GitHub + deploy automático en el VPS (cron).
+#
+# IMPORTANTE: los runners de GitHub (Azure) NO pueden alcanzar el VPS ni por SSH
+# ni por HTTP :3001 — el hosting bloquea esas IP. Por eso el deploy real lo hace
+# el propio VPS cada 2 min con scripts/deploy-if-changed.sh.
+#
+# Este workflow solo compila el código en GitHub. El check al VPS es informativo
+# y no bloquea el pipeline si no responde.
+
+name: Deploy VPS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Instalar y compilar
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+  deploy-status:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    continue-on-error: true
+    steps:
+      - name: Comprobar VPS (informativo; no bloquea)
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          if [ -z "${VPS_HOST:-}" ]; then
+            echo "VPS_HOST no configurado. Deploy vía cron en el servidor."
+            exit 0
+          fi
+          url="http://${VPS_HOST}:3001/health"
+          body=$(curl -sf --max-time 10 "$url" 2>/dev/null || true)
+          if [ -z "$body" ]; then
+            echo "GitHub no alcanza ${url} (firewall del hosting)."
+            echo "El VPS se despliega solo vía cron deploy-if-changed.sh."
+            exit 0
+          fi
+          echo "VPS responde: ${body}"
+          if echo "$body" | grep -q "${EXPECTED_SHA}"; then
+            echo "Commit ${EXPECTED_SHA} ya desplegado."
+          else
+            echo "Commit en VPS distinto a ${EXPECTED_SHA}; el cron lo aplicará en ~2 min."
+          fi

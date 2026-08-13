@@ -1,0 +1,38 @@
+# Auditoría operativa en el VPS (manual). Requiere los mismos secrets que deploy.yml.
+name: Audit VPS
+
+on:
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: "Ventana en horas hacia atrás"
+        required: false
+        default: "350"
+        type: string
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run audit on VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 10m
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd /opt/whatsapp-chatbot
+            git fetch origin -q
+            git log -1 --oneline
+            chmod +x scripts/audit-vps.sh 2>/dev/null || true
+            HOURS="${{ inputs.hours }}" bash scripts/audit-vps.sh || {
+              # Si el script aún no está desplegado, auditoría inline mínima
+              DB="./data/chatbot.db"
+              H="${{ inputs.hours }}"
+              echo "WARN: audit-vps.sh no encontrado; consultas básicas"
+              sqlite3 -json "$DB" "SELECT datetime('now') AS now_utc;"
+              sqlite3 -json "$DB" "SELECT role, COUNT(*) AS n FROM conversations WHERE timestamp >= datetime('now', '-${H} hours') GROUP BY role;"
+            }
