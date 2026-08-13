@@ -5,7 +5,7 @@ export const searchPropertiesTool: OpenAI.Chat.ChatCompletionTool = {
   function: {
     name: "search_properties",
     description:
-      "Buscar inmuebles publicados por Inmobiliaria Bazán. Usa esta herramienta cuando el usuario pida propiedades, precios, zonas, habitaciones, tipo de inmueble, alquiler o venta. Los valores de transaction_type deben ser exactamente: Venta, Alquiler, Traspaso, Alquiler Vacacional o Reformas (como en la web).",
+      "Buscar inmuebles publicados por Mambo Inmobiliaria (catálogo Idealista: Vélez-Málaga, Torre del Mar y Costa del Sol Oriental). Úsala cuando el usuario pida propiedades, las más baratas, precios, zonas, habitaciones, tipo, alquiler o venta. transaction_type: Venta, Alquiler, Traspaso, Alquiler Vacacional o Reformas.",
     parameters: {
       type: "object",
       properties: {
@@ -24,7 +24,8 @@ export const searchPropertiesTool: OpenAI.Chat.ChatCompletionTool = {
         min_bedrooms: { type: "number", description: "Mínimo de dormitorios/habitaciones (no usar para excluir estudios; preferir property_type Estudio)" },
         location_contains: {
           type: "string",
-          description: "Texto que debe aparecer en la zona o ubicación (ej: Centro, Soho, Perchel)",
+          description:
+            "Texto de zona (ej: Vélez-Málaga, Torre del Mar, Almayate, Periana). Si pide las más baratas sin zona, omite este campo.",
         },
         features_any: {
           type: "array",
@@ -34,7 +35,7 @@ export const searchPropertiesTool: OpenAI.Chat.ChatCompletionTool = {
         },
         ref: {
           description:
-            "Referencia exacta del anuncio (ej: 1616). Usa solo este campo para consultar una ref concreta; no mezcles otros filtros.",
+            "Referencia exacta del anuncio (Idealista, 6–12 dígitos, ej: 111673415). Usa solo este campo para una ref concreta; no mezcles otros filtros.",
           oneOf: [{ type: "string" }, { type: "integer" }],
         },
         limit: { type: "number", description: "Máximo de resultados (por defecto 10, máx 25)" },

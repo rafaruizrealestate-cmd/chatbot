@@ -12,6 +12,15 @@ describe("extractPortalAdRef", () => {
     );
   });
 
+  it("extracts Idealista ad id from professional /pro/ URL", () => {
+    assert.deepEqual(
+      extractPortalAdRef(
+        "https://www.idealista.com/pro/mambo-inmobiliaria/inmueble/111673415/"
+      ),
+      { portal: "idealista", externalId: "111673415" }
+    );
+  });
+
   it("extracts Cod. from Habitatsoft text", () => {
     assert.equal(extractIdealistaAdId("Cod. 111835353\nRef. 1736"), "111835353");
   });

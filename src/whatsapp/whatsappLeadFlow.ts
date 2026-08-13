@@ -1,3 +1,4 @@
+import { config } from "../config.js";
 import type { PropertyRow } from "../knowledge/properties.js";
 import { resolvePropertyRefFromCatalog } from "../knowledge/properties.js";
 import type { AgentContact } from "../agents/assignment.js";
@@ -16,9 +17,19 @@ import {
   wantsOwnerServicesDetail,
 } from "../knowledge/services.js";
 
-export const OWNER_REGISTRATION_URL =
-  "https://www.inmobiliariabazan.com/registro-vendedor.php";
-export const OWNER_CONTACT = { name: "Álvaro", phone: "34646424563" };
+export const OWNER_REGISTRATION_URL = "https://www.mamboinmobiliaria.com";
+export const OWNER_CONTACT = {
+  get name() {
+    return config.voiceOwnerAgentName;
+  },
+  get phone() {
+    return config.voiceOwnerAgentPhone.replace(/\D+/g, "") || "34644601999";
+  },
+};
+
+function ownerPhoneDisplay(): string {
+  return formatAgentPhoneEs(OWNER_CONTACT.phone);
+}
 
 const GREETING_AS_NAME = new Set([
   "hola",
@@ -300,7 +311,7 @@ function hasRecentOwnerListingContext(
   if (userMsgs.some((m) => isOwnerListingIntent(m.content))) return true;
   const lastAssistant =
     [...history].reverse().find((m) => m.role === "assistant")?.content ?? "";
-  return /registro-vendedor\.php|WhatsApp Álvaro/i.test(lastAssistant);
+  return /registro-vendedor\.php|WhatsApp Álvaro|WhatsApp Rafael|mamboinmobiliaria\.com/i.test(lastAssistant);
 }
 
 function isOwnerListingFollowUp(text: string): boolean {
@@ -375,7 +386,7 @@ function buildOwnerHandoffConfirmation(
   const opNote = op ? ` para ${op} tu inmueble` : "";
   return [
     `${hi}Le paso tus datos a ${OWNER_CONTACT.name}${opNote} y se pone en contacto contigo lo antes posible.`,
-    `Si prefieres, escríbele tú directamente por WhatsApp: +34 646 424 563`,
+    `Si prefieres, escríbele tú directamente por WhatsApp: ${ownerPhoneDisplay()}`,
     `O registra el inmueble aquí para agilizar: ${OWNER_REGISTRATION_URL}`,
   ].join("\n\n");
 }
@@ -414,15 +425,15 @@ export function buildOwnerListingReply(
     return [
       `${hi}Te resumo cómo trabajamos con propietarios:`,
       formatOwnerServicesForWhatsApp(),
-      `Te orienta ${OWNER_CONTACT.name} (WhatsApp +34 646 424 563). Registro: ${OWNER_REGISTRATION_URL}`,
+      `Te orienta ${OWNER_CONTACT.name} (WhatsApp ${ownerPhoneDisplay()}). Web: ${OWNER_REGISTRATION_URL}`,
       "¿En qué zona está el inmueble y prefieres venta o alquiler?",
     ].join("\n\n");
   }
 
   return [
     `${hi}Si quieres que gestionemos la venta o el alquiler de tu inmueble, ${OWNER_CONTACT.name} te orienta.`,
-    `WhatsApp ${OWNER_CONTACT.name}: +34 646 424 563`,
-    `Registro online: ${OWNER_REGISTRATION_URL}`,
+    `WhatsApp ${OWNER_CONTACT.name}: ${ownerPhoneDisplay()}`,
+    `Web: ${OWNER_REGISTRATION_URL}`,
     "¿En qué zona está el inmueble y prefieres venta o alquiler?",
   ].join("\n\n");
 }

@@ -1,4 +1,4 @@
-/** Servicios oficiales de Inmobiliaria Bazán (conocimiento fijo, no depende del scrape). */
+/** Servicios oficiales de Mambo Inmobiliaria (conocimiento fijo, no depende del scrape). */
 
 export const OWNER_SERVICES_ITEMS = [
   "Venta, alquiler o reforma de tu inmueble — nos encargamos de todo",
@@ -13,7 +13,7 @@ export const OWNER_SERVICES_ITEMS = [
 ] as const;
 
 export const BUYER_SERVICES_ITEMS = [
-  "Te ayudamos a encontrar inmueble en Málaga: compra, alquiler o inversión",
+  "Te ayudamos a encontrar inmueble en Vélez-Málaga, Torre del Mar y la Costa del Sol Oriental: compra, alquiler o inversión",
   "Gestión completa y asesoramiento legal",
   "Contratos elaborados por nuestros abogados",
   "Reformas y diseño de interiores",
@@ -21,9 +21,9 @@ export const BUYER_SERVICES_ITEMS = [
   "Tasación bancaria ajustada al precio de venta",
 ] as const;
 
-/** Bloque inyectado siempre en el system prompt de Leo. */
+/** Bloque inyectado siempre en el system prompt de WhatsApp (Luz). */
 export const BAZAN_SERVICES_PROMPT_BLOCK = [
-  "--- Servicios Inmobiliaria Bazán (oficial) ---",
+  "--- Servicios Mambo Inmobiliaria (oficial) ---",
   "",
   "PROPIETARIOS (vender, alquilar o reformar su inmueble):",
   ...OWNER_SERVICES_ITEMS.map((s) => `- ${s}`),
@@ -31,8 +31,8 @@ export const BAZAN_SERVICES_PROMPT_BLOCK = [
   "COMPRADORES E INQUILINOS (buscan inmueble):",
   ...BUYER_SERVICES_ITEMS.map((s) => `- ${s}`),
   "",
-  "Tienda: Calle Mármoles 39, Málaga. Redes sociales (+70k seguidores).",
-  "Propietarios TIPO C: contacto Álvaro +34 646 424 563 y registro-vendedor.php.",
+  "Zona: Vélez-Málaga, Torre del Mar y Costa del Sol Oriental.",
+  "Propietarios TIPO C: contacto Rafael +34 644 601 999 y www.mamboinmobiliaria.com.",
   "Responde con naturalidad y brevedad; no vuelques la lista entera salvo que pregunten por servicios o cómo trabajáis.",
   "--- Fin servicios ---",
 ].join("\n");

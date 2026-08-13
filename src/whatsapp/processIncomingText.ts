@@ -15,6 +15,7 @@ import {
   clearLeadProfileRef,
 } from "../db/leads.js";
 import { resolvePropertyRefFromCatalog, searchProperties, type PropertyRow } from "../knowledge/properties.js";
+import { publicPropertyUrl } from "../knowledge/propertyUrl.js";
 import {
   ingestPortalMappingsFromText,
   resolveRefFromPortalText,
@@ -851,9 +852,7 @@ async function notifyAgentOfContact(
   const moveIn = extractMoveInTiming(leadScanText) ?? "No indicado";
   const lastClientMessage = latestUserText.trim();
 
-  const propertyUrl =
-    property?.url ??
-    (refFinal ? `https://www.inmobiliariabazan.com/propiedad?propiedad=${encodeURIComponent(refFinal)}` : null);
+  const propertyUrl = publicPropertyUrl({ ref: refFinal ?? "", url: property?.url });
 
   const convPhone =
     conversationPhoneDigits(customerPhone) ?? conversationPhoneDigits(ctx?.customerDisplayId);
@@ -1117,9 +1116,9 @@ export async function processIncomingText(
           "",
           "[Instrucciones internas]",
           "- El cliente ha pegado un enlace externo. Por seguridad NO abrimos ni visitamos enlaces; no digas que 'no tienes acceso' ni que 'no encontraste la referencia' como si hubieras fallado al abrirla.",
-          "- Responde de forma proactiva y breve: explica que para localizarla en nuestro catálogo necesitas la referencia (3-4 dígitos que sale en el anuncio) O, si no la tiene, más detalles del inmueble.",
+          "- Responde de forma proactiva y breve: explica que para localizarla en nuestro catálogo necesitas la referencia del anuncio (Idealista, 6–12 dígitos) O, si no la tiene, más detalles del inmueble.",
           "- Pide 1-2 datos concretos: referencia preferente; si no, zona/calle + precio aproximado + venta/alquiler (+ habitaciones si puede).",
-          "- También vale el enlace de inmobiliariabazan.com si lo tiene.",
+          "- También vale el enlace de mamboinmobiliaria.com o de Idealista del anuncio si lo tiene.",
           "- NO inventes una referencia ni listes 5 propiedades al azar solo porque mandó un link.",
           "- Si en el mensaje ya hay zona/precio/tipo, úsalos para orientar, pero confirma pidiendo la ref o un dato que cierre la ficha.",
         ].join("\n")
@@ -1455,7 +1454,7 @@ export async function processIncomingText(
       );
     } catch (e) {
       console.error("[whatsapp] OpenAI error", e);
-      return "Ahora mismo tengo un problema técnico al responder. Por favor escribe al 672 594 724 o a info@inmobiliariabazan.com.";
+      return "Ahora mismo tengo un problema técnico al responder. Por favor escribe al 644 601 999 o a info@mamboinmobiliaria.com.";
     }
   }
 

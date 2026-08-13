@@ -59,7 +59,6 @@ export function pickAgent(
   if (intent === "C") {
     const owner = agentFromEnv("LEAD_OWNER");
     if (owner) return owner;
-    return { name: "Álvaro", phone: "34646424563" };
   }
 
   const fallback = agentFromEnv("LEAD_FALLBACK");

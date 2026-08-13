@@ -2,7 +2,7 @@ import { config } from "../config.js";
 
 /** Saludo fijo en el primer mensaje de WhatsApp sin consulta concreta. */
 export function whatsappFirstGreeting(): string {
-  return `Hola, soy ${config.botName} la IA de Inmobiliaria Bazán. ¿Cómo puedo ayudarte?`;
+  return `Hola, soy ${config.botName} la IA de ${config.agencyName}. ¿Cómo puedo ayudarte?`;
 }
 
 function normalize(s: string): string {
@@ -27,7 +27,7 @@ export function isGenericWhatsAppOpener(text: string): boolean {
   const t = normalize(text).trim();
   if (!t) return true;
   const propertySignal =
-    /\b(ref\.?|referencia|\d{3,4}\b|piso|chalet|atico|duplex|adosado|parcela|terreno|alquiler|compr|visita|habitacion|dormitori|m2|m²|€|euros|millon|precio|zona|mijas|marbella|malaga|fuengirola|torremolinos|benalmadena|estepona|seguimos|gracias|pagar|fianza|deposito|dep[oó]sito)\b/i.test(
+    /\b(ref\.?|referencia|\d{3,4}\b|\d{6,12}\b|piso|chalet|atico|duplex|adosado|parcela|terreno|alquiler|compr|visita|habitacion|dormitori|vivienda|casa|barat|m2|m²|€|euros|millon|precio|zona|velez|torre del mar|almayate|periana|mijas|marbella|malaga|fuengirola|torremolinos|benalmadena|estepona|seguimos|gracias|pagar|fianza|deposito|dep[oó]sito)\b/i.test(
       text,
     );
   if (propertySignal) return false;
@@ -63,10 +63,10 @@ export function shouldMentionAgentToCustomer(
   customerName: string | null | undefined,
   userText: string
 ): boolean {
-  if (ref || hasProperty) return true;
-  if (customerName?.trim()) return true;
+  void customerName;
   if (/\b(visita|hablar con|persona|humano|agente|comercial|llamad|contacto directo)\b/i.test(userText)) {
     return true;
   }
+  if (ref || hasProperty) return true;
   return false;
 }

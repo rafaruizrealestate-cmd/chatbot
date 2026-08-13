@@ -13,7 +13,7 @@ import {
 } from "./customerPropertyMessage.js";
 
 export const PROPERTY_NOT_IN_PORTFOLIO =
-  "Lo lamento, esa propiedad no la tenemos. Te invito a visitar www.inmobiliariabazan.com e indicarnos cuál te gusta.";
+  "Lo lamento, esa propiedad no la tenemos. Te invito a visitar www.mamboinmobiliaria.com e indicarnos cuál te gusta.";
 
 export type PropertySearchSignals = {
   ref: string | null;
@@ -27,6 +27,26 @@ export type PropertySearchSignals = {
 
 const KNOWN_LOCATIONS = [
   "rincon de la victoria",
+  "caleta de velez",
+  "velez-malaga",
+  "velez malaga",
+  "torre del mar",
+  "valle niza",
+  "benajarafe",
+  "benamocarra",
+  "almayate",
+  "mezquitilla",
+  "algarrobo",
+  "periana",
+  "torrox",
+  "nerja",
+  "chilches",
+  "trapiche",
+  "competa",
+  "sayalonga",
+  "canillas",
+  "cajiz",
+  "arenas",
   "la victoria",
   "mijas golf",
   "mijas costa",
@@ -50,6 +70,12 @@ const LOCATION_ALIASES: Record<string, string> = {
   victoria: "victoria",
   "perchel norte": "perchel norte",
   perchel: "perchel",
+  "velez-malaga": "velez malaga",
+  "el velez": "velez malaga",
+  velez: "velez malaga",
+  "belen malaga": "velez malaga",
+  "torre del mar": "torre del mar",
+  "la caleta": "caleta de velez",
 };
 
 const TRANSACTION_WORDS = new Set([
@@ -200,16 +226,58 @@ function assistantAskedForPropertyRef(
 ): boolean {
   const lastAssistant = [...history].reverse().find((m) => m.role === "assistant")?.content ?? "";
   return /\b(referencia|ref\.?)\b/i.test(lastAssistant) &&
-    /\b(dame|das|indica|pásame|pasame|ficha|enlace|inmobiliariabazan)\b/i.test(lastAssistant);
+    /\b(dame|das|indica|pásame|pasame|ficha|enlace|inmobiliariabazan|mamboinmobiliaria|idealista)\b/i.test(lastAssistant);
+}
+
+/** “Las más baratas”, “qué tenéis”, listado sin ficha concreta. */
+export function wantsBroadCatalogListing(text: string): boolean {
+  const t = normalize(text);
+  return (
+    /\b(mas\s+barat[oa]s?|mas\s+econom|las\s+baratas|lo\s+mas\s+barato|viviendas?\s+barat|opciones?\s+barat|las\s+mas\s+baratas)\b/.test(
+      t,
+    ) ||
+    /\b(que\s+ten[eé]is|que\s+teneis|muestrame|muestra(?:me)?|listado|catalogo|qu[eé]\s+hay)\b/.test(t)
+  );
 }
 
 export function hasPropertySearchIntent(text: string): boolean {
   const s = extractPropertySearchSignals(text);
   if (s.ref) return true;
   if (s.location || s.propertyType || s.minPrice != null || s.bedrooms != null) return true;
-  return /\b(busco|interesa|ten[eé]is|tienen|anuncio|ficha|inmueble|propiedad|visita|disponible)\b/i.test(
+  if (wantsBroadCatalogListing(text)) return true;
+  return /\b(busco|interesa|ten[eé]is|tienen|anuncio|ficha|inmueble|propiedad|vivienda|casa|barat|visita|disponible)\b/i.test(
     text
   );
+}
+
+/** Variantes para LIKE de SQLite (no pliega tildes; Vélez-Málaga ≠ "velez malaga"). */
+function locationQueryVariants(raw: string): string[] {
+  const t = raw.trim();
+  if (!t) return [];
+  const out: string[] = [];
+  const push = (s: string) => {
+    const v = s.replace(/\s+/g, " ").trim();
+    if (v.length >= 3 && !out.some((x) => x.toLowerCase() === v.toLowerCase())) out.push(v);
+  };
+  push(t);
+  push(t.replace(/-/g, " "));
+  push(t.replace(/\s+/g, "-"));
+  const folded = normalize(t);
+  push(folded);
+  push(folded.replace(/-/g, " "));
+  push(folded.replace(/\s+/g, "-"));
+  const tokens = folded.split(/[\s-]+/).filter((x) => x.length >= 4 && !/^(malaga)$/.test(x));
+  if (tokens[0]) push(tokens[0]);
+  if (/\bvelez\b|\bbelen\b/.test(folded)) {
+    push("Vélez");
+    push("vélez");
+    push("Vélez-Málaga");
+  }
+  if (/torre del mar/.test(folded)) push("Torre del Mar");
+  if (/\balmayate\b/.test(folded)) push("Almayate");
+  if (/\bperiana\b/.test(folded)) push("Periana");
+  if (/caleta/.test(folded)) push("Caleta");
+  return out;
 }
 
 export function searchBySignals(signals: PropertySearchSignals): PropertyRow[] {
@@ -221,7 +289,6 @@ export function searchBySignals(signals: PropertySearchSignals): PropertyRow[] {
   const filters: Parameters<typeof searchProperties>[0] = { limit: 8 };
   if (signals.transactionType) filters.transaction_type = signals.transactionType;
   if (signals.propertyType) filters.property_type = signals.propertyType;
-  if (signals.location) filters.location_contains = signals.location;
   if (signals.minPrice != null) filters.min_price = signals.minPrice;
   if (signals.maxPrice != null) filters.max_price = signals.maxPrice;
   if (signals.bedrooms != null) filters.min_bedrooms = signals.bedrooms;
@@ -239,20 +306,31 @@ export function searchBySignals(signals: PropertySearchSignals): PropertyRow[] {
     );
   }
 
-  let rows = searchProperties(filters);
-  if (rows.length) return rows;
+  const locationsToTry = signals.location
+    ? locationQueryVariants(signals.location)
+    : [undefined];
 
-  if (signals.location) {
+  let rows: PropertyRow[] = [];
+  for (const loc of locationsToTry) {
     rows = searchProperties({
-      ...(signals.propertyType ? { property_type: signals.propertyType } : {}),
-      ...(signals.transactionType ? { transaction_type: signals.transactionType } : {}),
-      location_contains: signals.location,
-      residential_only: filters.residential_only,
-      exclude_shared_rooms: filters.exclude_shared_rooms,
-      limit: 8,
+      ...filters,
+      ...(loc ? { location_contains: loc } : {}),
     });
     if (rows.length) return rows;
-    // Ubicación con tilde / sin match: repetir solo por tipo
+  }
+
+  if (signals.location) {
+    for (const loc of locationQueryVariants(signals.location)) {
+      rows = searchProperties({
+        ...(signals.propertyType ? { property_type: signals.propertyType } : {}),
+        ...(signals.transactionType ? { transaction_type: signals.transactionType } : {}),
+        location_contains: loc,
+        residential_only: filters.residential_only,
+        exclude_shared_rooms: filters.exclude_shared_rooms,
+        limit: 8,
+      });
+      if (rows.length) return rows;
+    }
     if (signals.propertyType) {
       rows = searchProperties({
         property_type: signals.propertyType,
@@ -348,7 +426,7 @@ function buildFollowUpQuestion(field: MissingField): string {
     case "operation":
       return "¿Es para compra o alquiler?";
     case "ref":
-      return "¿Me das la referencia de la ficha (o el enlace de inmobiliariabazan.com)?";
+      return "¿Me das la referencia de la ficha (o el enlace de Idealista / mamboinmobiliaria.com)?";
   }
 }
 
@@ -369,6 +447,11 @@ export function handleUnresolvedPropertySearch(opts: {
   if (!hasPropertySearchIntent(combinedText) && !extractBarePropertyRef(currentText)) return null;
 
   const signals = extractPropertySearchSignals(combinedText);
+  const broadListing =
+    wantsBroadCatalogListing(combinedText) || wantsBroadCatalogListing(currentText);
+  if (broadListing && !signals.transactionType) {
+    signals.transactionType = "Venta";
+  }
   // Si el bot pidió la ref y el cliente responde solo "1616", priorizar ese número.
   const bareCurrent = extractBarePropertyRef(currentText);
   if (bareCurrent && (!signals.ref || assistantAskedForPropertyRef(history))) {
@@ -400,6 +483,14 @@ export function handleUnresolvedPropertySearch(opts: {
       kind: "choices",
       properties: matches,
       reply: formatPropertyMatches(matches, undefined, { conversational: true }),
+    };
+  }
+
+  if (broadListing) {
+    return {
+      kind: "follow_up",
+      reply:
+        "Ahora mismo no encuentro viviendas publicadas que encajen. ¿Pruebas otra zona o un presupuesto distinto?",
     };
   }
 

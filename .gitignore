@@ -10,5 +10,8 @@ uploads/
 .profiles/
 voice-agent/.venv/
 voice-agent/.env
+deploy/livekit/livekit.yaml
+deploy/livekit/.env
+deploy/evolution/.env
 # Claves/local del VPS (solo en tu Mac; nunca en Git)
 .local/

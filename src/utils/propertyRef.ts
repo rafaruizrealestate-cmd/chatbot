@@ -24,6 +24,15 @@ export function sanitizePropertyRef(raw: string | null | undefined): string | nu
   return r;
 }
 
+/** Ref en catálogo: Bazán 3–4 dígitos o ID de anuncio Idealista (6–12). */
+export function catalogPropertyRef(raw: string | null | undefined): string | null {
+  const short = sanitizePropertyRef(raw);
+  if (short) return short;
+  const r = raw?.trim() ?? "";
+  if (/^\d{6,12}$/.test(r)) return r;
+  return null;
+}
+
 function normalizeSpoken(s: string): string {
   return s
     .normalize("NFD")

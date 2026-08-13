@@ -1,9 +1,10 @@
 import { getDb, getPropertiesDb } from "../db/database.js";
 import {
+  catalogPropertyRef,
   extractAllPropertyRefCandidates,
   extractPropertyRefFromText,
-  sanitizePropertyRef,
 } from "../utils/propertyRef.js";
+import { extractPortalAdRef, lookupPortalListing } from "./portalListings.js";
 
 export type PropertyRow = {
   ref: string;
@@ -190,7 +191,7 @@ export function listDistinctAgentPhones(): string[] {
 
 /** True si la ref existe en el catálogo scrapeado (BD de propiedades). */
 export function propertyExistsByRef(ref: string): boolean {
-  const r = sanitizePropertyRef(ref);
+  const r = catalogPropertyRef(ref);
   if (!r) return false;
   return searchProperties({ ref: r, limit: 1 }).length > 0;
 }
@@ -200,6 +201,13 @@ export function propertyExistsByRef(ref: string): boolean {
  * Sin comerciales estáticos: el agente sale luego de agent_name/phone de esa ficha.
  */
 export function resolvePropertyRefFromCatalog(text: string): string | null {
+  const portal = extractPortalAdRef(text);
+  if (portal) {
+    const mapped = lookupPortalListing(portal.portal, portal.externalId);
+    if (mapped && propertyExistsByRef(mapped)) return mapped;
+    if (propertyExistsByRef(portal.externalId)) return portal.externalId;
+  }
+
   const explicit = extractPropertyRefFromText(text);
   if (explicit && propertyExistsByRef(explicit)) return explicit;
 

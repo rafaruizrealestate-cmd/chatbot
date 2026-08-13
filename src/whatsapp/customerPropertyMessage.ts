@@ -1,6 +1,8 @@
+import { config } from "../config.js";
 import type { AgentContact } from "../agents/assignment.js";
 import { formatAgentPhoneEs } from "../leads/agentNotification.js";
 import type { PropertyRow } from "../knowledge/properties.js";
+import { publicPropertyUrl } from "../knowledge/propertyUrl.js";
 import { isGarbageClientName } from "../utils/portalLeadText.js";
 
 /** Cierre suave: invita a seguir, no despide ni da por terminada la conversación. */
@@ -10,16 +12,16 @@ export const CUSTOMER_PROPERTY_CLOSING =
 /** Etiqueta legible del origen del contacto para el cliente. */
 export function formatLeadOriginForCustomer(origin: string | null | undefined): string {
   const o = (origin ?? "").trim().toLowerCase();
-  if (!o) return "la web de Inmobiliaria Bazán";
+  if (!o) return `la web de ${config.agencyName}`;
   if (o.includes("idealista")) return "Idealista";
   if (o.includes("fotocasa")) return "Fotocasa";
   if (o.includes("pisos")) return "Pisos.com";
   if (o.includes("indomio")) return "Indomio";
   if (o.includes("habitatsoft")) return "HabitatSoft";
-  if (o.includes("inmobiliariabazan") || o === "web" || o.includes("webbazan")) {
-    return "la web de Inmobiliaria Bazán (inmobiliariabazan.com)";
+  if (o.includes("inmobiliariabazan") || o.includes("mamboinmobiliaria") || o === "web" || o.includes("webbazan")) {
+    return `la web de ${config.agencyName}`;
   }
-  if (o === "llamada" || o === "voice") return "una llamada telefónica a Inmobiliaria Bazán";
+  if (o === "llamada" || o === "voice") return `una llamada telefónica a ${config.agencyName}`;
   if (o === "whatsapp") return "WhatsApp";
   if (o === "email" || o === "correo") return "correo electrónico";
   return o.charAt(0).toUpperCase() + o.slice(1);
@@ -69,11 +71,10 @@ export function formatCustomerPropertyMessage(opts: CustomerPropertyMessageOpts)
     .filter(Boolean)
     .join(", ");
 
-  const url =
-    (p.url?.trim() || null) ??
-    `https://www.inmobiliariabazan.com/propiedad?propiedad=${encodeURIComponent(p.ref)}`;
+  const url = publicPropertyUrl(p);
 
-  const lines = [greeting, "", intro, "", `${p.title} (ref. ${p.ref}): ${specs}.`, url];
+  const lines = [greeting, "", intro, "", `${p.title} (ref. ${p.ref}): ${specs}.`];
+  if (url) lines.push(url);
 
   if (agent?.name?.trim() && agent.phone?.trim()) {
     const style =

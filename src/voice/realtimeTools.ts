@@ -1,5 +1,6 @@
 import { config } from "../config.js";
 import { searchProperties, type PropertyRow } from "../knowledge/properties.js";
+import { publicPropertyUrl } from "../knowledge/propertyUrl.js";
 import type { AgentContact } from "../agents/assignment.js";
 import { formatLeadForAgent } from "../leads/agentNotification.js";
 import { formatCustomerPropertyMessage } from "../whatsapp/customerPropertyMessage.js";
@@ -128,6 +129,17 @@ export function locationSearchVariants(raw: string | undefined): string[] {
     .trim();
   push(noStreet);
   push(noStreet.replace(/\s+de(?:l)?\s+/gi, " "));
+  push(t.replace(/-/g, " "));
+  push(t.replace(/\s+/g, "-"));
+
+  const folded = t
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (/\bvelez\b|\bbelen\b/.test(folded) || /belen\s+malaga/.test(folded)) {
+    push("Vélez");
+    push("Vélez-Málaga");
+  }
 
   // Token significativo (última palabra ≥4 letras): "calle Castilla" → "Castilla".
   const tokens = noStreet
@@ -279,9 +291,7 @@ export async function toolDerivarComercial(
   const clientPhone = resolveVoiceClientPhone(input.phone, input.caller) || callerDigits;
 
   const summary = (input.summary ?? "").trim() || `Llamada de voz. Intención: ${input.intent}.`;
-  const propertyUrl =
-    property?.url ??
-    (ref ? `https://www.inmobiliariabazan.com/propiedad?propiedad=${encodeURIComponent(ref)}` : null);
+  const propertyUrl = publicPropertyUrl({ ref: ref ?? "", url: property?.url });
 
   const body = formatLeadForAgent({
     origin: "llamada",

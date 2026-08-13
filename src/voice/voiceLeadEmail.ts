@@ -4,6 +4,7 @@ import { sendEmailReply } from "../email/smtpSender.js";
 import { hasRecentOutboundTo } from "../email/emailGuards.js";
 import { formatAgentPhoneEs, formatLeadForAgent } from "../leads/agentNotification.js";
 import { searchProperties, type PropertyRow } from "../knowledge/properties.js";
+import { publicPropertyUrl } from "../knowledge/propertyUrl.js";
 import { isGarbageCustomerEmail, isGarbageClientName } from "../utils/portalLeadText.js";
 import {
   formatCustomerPropertyMessage,
@@ -102,8 +103,9 @@ export function formatVoiceCallClientConfirmation(input: {
 
   if (input.ref?.trim()) {
     const ref = input.ref.trim();
-    const propertyUrl = `https://www.inmobiliariabazan.com/propiedad?propiedad=${encodeURIComponent(ref)}`;
-    lines.push("", `Referencia de interés: ${ref}.`, propertyUrl);
+    lines.push("", `Referencia de interés: ${ref}.`);
+    const propertyUrl = publicPropertyUrl({ ref, url: null });
+    if (propertyUrl) lines.push(propertyUrl);
   }
   if (summary) {
     lines.push("", `Resumen: ${summary}`);
@@ -151,9 +153,7 @@ export async function sendVoiceLeadEmails(input: VoiceLeadEmailInput): Promise<V
   const property =
     input.property ??
     (ref ? searchProperties({ ref, limit: 1 })[0] : undefined);
-  const propertyUrl =
-    property?.url?.trim() ||
-    (ref ? `https://www.inmobiliariabazan.com/propiedad?propiedad=${encodeURIComponent(ref)}` : null);
+  const propertyUrl = publicPropertyUrl({ ref: ref ?? "", url: property?.url });
   const summary =
     (input.summary ?? "").trim() || `Llamada de voz. Intención: ${input.intent}.`;
 
@@ -392,7 +392,7 @@ export async function sendVoiceClientPropertyEmail(
 
 function roleLabel(role: VoiceCallTurnRow["role"]): string {
   if (role === "user") return "Cliente";
-  if (role === "assistant") return config.botName || "Lara";
+  if (role === "assistant") return config.voiceBotName || config.botName || "Lucía";
   return "Sistema";
 }
 
@@ -415,7 +415,7 @@ export function formatVoiceCallTranscriptEmail(input: {
 }): { subject: string; text: string } {
   const { call, turns } = input;
   const caller = formatCallerDisplay(call.caller);
-  const subject = `Transcripción llamada ${caller} — ${config.botName || "Lara"}`;
+  const subject = `Transcripción llamada ${caller} — ${config.voiceBotName || "Lucía"}`;
 
   const meta = [
     `Llamada ID: ${call.id}`,
@@ -429,7 +429,7 @@ export function formatVoiceCallTranscriptEmail(input: {
   ].filter(Boolean) as string[];
 
   const lines: string[] = [
-    `Transcripción completa — Inmobiliaria Bazán (${config.botName || "Lara"})`,
+    `Transcripción completa — ${config.agencyName} (${config.voiceBotName || "Lucía"})`,
     "",
     ...meta,
   ];

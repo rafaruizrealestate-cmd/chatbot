@@ -26,6 +26,17 @@ export function extractMainKnowledgeSections(html: string): string {
   }
   const metaDesc = $('meta[name="description"]').attr("content");
   if (metaDesc) parts.unshift(`Descripción del sitio (meta): ${normalizeWhitespace(metaDesc)}`);
+  const hasNamedSections = parts.some((p) => p.startsWith("## "));
+  if (hasNamedSections) return parts.join("\n\n");
+
+  const main = $("main").first();
+  if (main.length) {
+    const clone = main.clone();
+    stripNoise($, clone);
+    clone.find("nav, footer, form").remove();
+    const t = normalizeWhitespace(clone.text());
+    if (t.length > 80) parts.push(t.slice(0, 4000));
+  }
   return parts.join("\n\n");
 }
 
@@ -46,6 +57,10 @@ export async function scrapeMainPageKnowledge(baseUrl: string): Promise<string> 
 }
 
 export async function discoverAllPropertyRefs(baseUrl: string): Promise<string[]> {
+  const { isIdealistaTarget, discoverIdealistaRefs } = await import("./idealista.js");
+  if (isIdealistaTarget(baseUrl)) {
+    return discoverIdealistaRefs(baseUrl);
+  }
   const origin = baseUrl.replace(/\/$/, "");
   const listingUrls = [
     `${origin}/propiedades`,

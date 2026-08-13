@@ -1,4 +1,4 @@
-"""Agente de voz Lara para Inmobiliaria Bazán.
+"""Agente de voz Lucía (interno: lara) para Mambo Inmobiliaria.
 
 LiveKit Agents + OpenAI Realtime API. Recibe llamadas SIP (Zadarma -> LiveKit),
 usa el mismo backend que el WhatsApp-chatbot (VPS) para fichas, leads y archivo.
@@ -35,7 +35,7 @@ logger = logging.getLogger("lara")
 
 VPS_BASE_URL = os.environ["VPS_BASE_URL"].rstrip("/")
 VOICE_API_KEY = os.environ["VOICE_API_KEY"]
-REALTIME_MODEL = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime")
+REALTIME_MODEL = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime-1.5")
 # Realtime NO admite "nova" (eso es TTS WhatsApp). Válidas: alloy, ash, ballad,
 # coral, echo, sage, shimmer, verse, marin, cedar.
 _REALTIME_VOICES = {
@@ -66,6 +66,10 @@ RECORDINGS_DIR = os.getenv(
 # Ruta DENTRO del contenedor egress (montaje host → /out).
 EGRESS_OUTPUT_DIR = os.getenv("VOICE_EGRESS_OUTPUT_DIR", "/out").rstrip("/")
 AGENT_NAME = os.getenv("LIVEKIT_AGENT_NAME", "lara")
+AGENCY_NAME = (os.getenv("AGENCY_NAME") or "Mambo Inmobiliaria").strip() or "Mambo Inmobiliaria"
+VOICE_BOT_NAME = (
+    (os.getenv("VOICE_BOT_NAME") or os.getenv("BOT_NAME") or "Lucía").strip() or "Lucía"
+)
 # server_vad (teléfono) | semantic_vad
 TURN_MODE = (os.getenv("OPENAI_REALTIME_TURN_MODE") or "server_vad").strip().lower()
 TURN_EAGERNESS = os.getenv("OPENAI_REALTIME_EAGERNESS", "low").strip() or "low"
@@ -390,14 +394,14 @@ class LaraAgent(Agent):
         min_price: float | str | None = None,
         min_bedrooms: int | float | str | None = None,
     ):
-        """Busca inmuebles de Inmobiliaria Bazán. Úsala siempre antes de dar datos de una
-        propiedad; nunca inventes precios ni características.
+        """Busca inmuebles de Mambo Inmobiliaria (Vélez-Málaga, Torre del Mar y Costa del Sol Oriental).
+        Úsala siempre antes de dar datos de una propiedad; nunca inventes precios ni características.
 
         Args:
-            ref: Referencia exacta del anuncio (ej: 1616).
+            ref: Referencia exacta del anuncio de Idealista (6–12 dígitos, ej: 111673415).
             transaction_type: Venta, Alquiler, Traspaso, Alquiler Vacacional o Reformas.
             property_type: Tipo de inmueble (Piso, Chalet, Local...).
-            location_contains: Zona o barrio (ej: Centro, Carlos Haya, Soho).
+            location_contains: Zona (ej: Vélez-Málaga, Torre del Mar, Almayate, Periana).
             max_price: Precio máximo (número; si no lo sabes, omite el campo).
             min_price: Precio mínimo (número; si no lo sabes, omite el campo).
             min_bedrooms: Mínimo de habitaciones.
@@ -498,9 +502,7 @@ class LaraAgent(Agent):
         )
 
 
-DEFAULT_WELCOME = (
-    f"Inmobiliaria Bazán soy {os.getenv('BOT_NAME', 'Manuel').strip() or 'Manuel'} dígame"
-)
+DEFAULT_WELCOME = f"{AGENCY_NAME} soy {VOICE_BOT_NAME} dígame"
 
 
 def _phone_instruction_block(caller: str) -> str:
@@ -522,7 +524,8 @@ def _phone_instruction_block(caller: str) -> str:
 def _default_instructions(caller: str) -> str:
     """Instrucciones locales para arrancar sin esperar al backend."""
     return (
-        "Eres Manuel, recepcionista telefónico de Inmobiliaria Bazán (Málaga). "
+        f"Eres {VOICE_BOT_NAME}, recepcionista telefónica de {AGENCY_NAME} "
+        "(Vélez-Málaga, Torre del Mar y Costa del Sol Oriental). "
         "Habla en español, claro y breve. No inventes precios ni disponibilidad: "
         "usa las herramientas buscar_propiedad y derivar_comercial. "
         "Tú hablas PRIMERO en la llamada (saludo de recepción). "
@@ -637,11 +640,15 @@ async def entrypoint(ctx: JobContext):
     client = httpx.AsyncClient(timeout=8.0)
     caller = _caller_from_participant(ctx) or "desconocido"
 
-    welcome = DEFAULT_WELCOME
     instructions = _default_instructions(caller)
 
     # Estado mutable: la grabación y el call_id pueden resolverse en paralelo al saludo.
-    state: dict = {"call_id": "", "egress_id": None, "audio_path": None}
+    state: dict = {
+        "call_id": "",
+        "egress_id": None,
+        "audio_path": None,
+        "welcome": DEFAULT_WELCOME,
+    }
 
     agent = LaraAgent(instructions, client, caller, "", room_name=ctx.room.name)
     for p in ctx.room.remote_participants.values():
@@ -717,8 +724,7 @@ async def entrypoint(ctx: JobContext):
 
             w = (cfg or {}).get("welcome")
             if isinstance(w, str) and w.strip():
-                # Solo afecta si aún no hemos saludado; el saludo usa DEFAULT_WELCOME.
-                pass
+                state["welcome"] = w.strip()
 
             if cid:
                 eg_id, path = await _start_recording(ctx.room.name, cid)
@@ -783,6 +789,13 @@ async def entrypoint(ctx: JobContext):
     logger.info("session.start ok en %.2fs — esperando línea libre para saludar", time.monotonic() - t0)
     # Manuel SIEMPRE habla primero. Si suena Idealista/Fotocasa, espera silencio y saluda.
     await _wait_line_clear_then_ready(session)
+    if not setup_task.done():
+        try:
+            await asyncio.wait_for(asyncio.shield(setup_task), timeout=0.4)
+        except Exception:  # noqa: BLE001
+            pass
+    welcome = (state.get("welcome") or DEFAULT_WELCOME).strip()
+    logger.info("saludo: %s", welcome)
     await session.generate_reply(
         instructions=(
             f'Saluda AHORA tú primero, exactamente UNA sola vez, de un tirón, como recepción '

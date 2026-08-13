@@ -7,6 +7,7 @@ import { getCachedLidForPhone, rememberPhoneLid, resolveLidForPhone } from "./ph
 import { isBlockedByWorkSchedule } from "../utils/workSchedule.js";
 import { transcribeAudioBuffer } from "../voice/transcribeAudio.js";
 import { synthesizeSpeechMp3 } from "../voice/ttsAudio.js";
+import { tryClaimMetaDedup } from "../db/metaDedup.js";
 
 type EvolutionMessageKey = {
   id?: string;
@@ -388,6 +389,19 @@ export async function handleEvolutionWebhookPost(req: Request, res: Response): P
   if (!text?.trim() && !audio?.hasAudio) {
     console.log("[evolution-webhook] mensaje sin texto ni audio usable");
     return;
+  }
+
+  // Evolution a menudo reenvía el mismo MESSAGES_UPSERT (ruta /webhook + evento, o retry).
+  // Claim solo con texto/audio usable: un upsert vacío previo no debe bloquear el mensaje real.
+  if (incoming.messageId) {
+    const dedupKey = `evo:${(instance ?? "default").trim()}:${incoming.messageId}`;
+    if (!tryClaimMetaDedup(dedupKey)) {
+      console.log("[evolution-webhook] duplicado ignorado", {
+        messageId: incoming.messageId,
+        instance: instance ?? null,
+      });
+      return;
+    }
   }
 
   console.log("[evolution-webhook] Mensaje entrante", {

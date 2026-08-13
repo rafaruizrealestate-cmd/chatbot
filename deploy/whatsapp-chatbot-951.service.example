@@ -4,8 +4,8 @@
 #   sudo systemctl enable --now whatsapp-chatbot-951
 
 [Unit]
-Description=WhatsApp Chatbot Lara (951)
-After=network.target whatsapp-chatbot.service
+Description=Mambo Inmobiliaria chatbot (voz + panel)
+After=network.target
 
 [Service]
 Type=simple

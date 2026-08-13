@@ -64,9 +64,21 @@ function parsePhoneEmailMap(raw: string): Map<string, string> {
 }
 
 export const config = {
-  /** Nombre del asistente (WhatsApp, voz, emails). */
-  botName: optional("BOT_NAME", "Manuel"),
-  emailFromName: optional("EMAIL_FROM_NAME", "Manuel - Inmobiliaria Bazán"),
+  /** Nombre en WhatsApp (Luz). */
+  botName: optional("WHATSAPP_BOT_NAME", optional("BOT_NAME", "Luz")),
+  /** Nombre en llamadas de voz (Lucía). */
+  voiceBotName: optional("VOICE_BOT_NAME", "Lucía"),
+  emailFromName: optional("EMAIL_FROM_NAME", "Luz - Mambo Inmobiliaria"),
+  agencyName: optional("AGENCY_NAME", "Mambo Inmobiliaria"),
+  agencyArea: optional(
+    "AGENCY_AREA",
+    "Vélez-Málaga, Torre del Mar y la Costa del Sol Oriental",
+  ),
+  agencyWebsiteSpeech: optional("AGENCY_WEBSITE_SPEECH", "mambo inmobiliaria punto com"),
+  agencyInfoEmailSpeech: optional(
+    "AGENCY_INFO_EMAIL_SPEECH",
+    "info arroba mamboinmobiliaria punto com",
+  ),
   opsAlertPrefix: optional("OPS_ALERT_PREFIX", "Manuel"),
   /**
    * email | whatsapp | both — aviso de leads a comerciales.
@@ -112,6 +124,17 @@ export const config = {
   openaiApiKey: process.env.OPENAI_API_KEY ?? "",
   adminApiKey: process.env.ADMIN_API_KEY ?? "",
   scrapeTargetUrl: optional("SCRAPE_TARGET_URL", "https://www.inmobiliariabazan.com"),
+  /**
+   * Texto de conocimiento (quiénes somos) si el catálogo vive en Idealista.
+   * Vacío = misma URL que SCRAPE_TARGET_URL, o la web de Mambo si el target es Idealista.
+   */
+  scrapeKnowledgeUrl: (() => {
+    const explicit = (process.env.SCRAPE_KNOWLEDGE_URL ?? "").trim();
+    if (explicit) return explicit.replace(/\/$/, "");
+    const target = optional("SCRAPE_TARGET_URL", "https://www.inmobiliariabazan.com").replace(/\/$/, "");
+    if (/idealista\.com/i.test(target)) return "https://www.mamboinmobiliaria.com";
+    return target;
+  })(),
   /** 0 = no ejecutar scrape en deploy (usa PROPERTIES_DATABASE_PATH compartido con Leo). */
   scrapeEnabled: (process.env.SCRAPE_ENABLED ?? "0").trim() === "1",
   databasePath: dbPath,

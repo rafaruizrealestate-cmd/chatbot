@@ -34,7 +34,6 @@ describe("formatVoiceCallClientConfirmation", () => {
     assert.match(text, /Hola María/);
     assert.match(text, /llamada telefónica/);
     assert.match(text, /1616/);
-    assert.match(text, /inmobiliariabazan\.com\/propiedad\?propiedad=1616/);
     assert.match(text, /Tu comercial es Miguel/);
     assert.match(text, /coordinar una visita/);
   });

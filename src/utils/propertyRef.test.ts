@@ -6,6 +6,7 @@ import {
   extractPropertyRefFromText,
   parseSpokenPropertyRef,
   sanitizePropertyRef,
+  catalogPropertyRef,
 } from "./propertyRef.js";
 
 describe("extractPropertyRefFromText", () => {
@@ -51,6 +52,12 @@ describe("extractPropertyRefFromText", () => {
     assert.equal(extractPropertyRefFromText("Comprar"), null);
     assert.equal(sanitizePropertyRef("2024"), null);
     assert.equal(extractBarePropertyRef("presupuesto 1500 euros al mes"), null);
+  });
+
+  it("acepta ID de anuncio Idealista como ref de catálogo", () => {
+    assert.equal(catalogPropertyRef("111673415"), "111673415");
+    assert.equal(catalogPropertyRef("1652"), "1652");
+    assert.equal(sanitizePropertyRef("111673415"), null);
   });
 });
 

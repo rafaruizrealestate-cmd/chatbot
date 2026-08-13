@@ -1,0 +1,15 @@
+[Unit]
+Description=Mambo voice agent (LiveKit Lara)
+After=network.target docker.service whatsapp-chatbot-951.service
+Requires=whatsapp-chatbot-951.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/whatsapp-chatbot-951/voice-agent
+EnvironmentFile=/opt/whatsapp-chatbot-951/voice-agent/.env
+ExecStart=/opt/whatsapp-chatbot-951/voice-agent/.venv/bin/python agent.py start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

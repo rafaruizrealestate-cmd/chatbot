@@ -36,6 +36,13 @@ describe("locationSearchVariants", () => {
     const v = locationSearchVariants("Carlos de Haya");
     assert.ok(v.some((x) => /carlos\s+haya/i.test(x)));
   });
+
+  it("añade Vélez cuando el STT oye Belén Málaga o Vélez-Málaga", () => {
+    const a = locationSearchVariants("Belén Málaga");
+    const b = locationSearchVariants("Vélez-Málaga");
+    assert.ok(a.some((x) => /v[eé]lez/i.test(x)));
+    assert.ok(b.some((x) => x.includes("-") || /v[eé]lez/i.test(x)));
+  });
 });
 
 describe("withPriceMargin", () => {

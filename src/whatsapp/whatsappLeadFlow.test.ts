@@ -176,7 +176,7 @@ describe("buildOwnerListingReply contextual", () => {
 
   it("confirma handoff cuando piden que llame Álvaro", () => {
     const reply = buildOwnerListingReply(null, "otra vez? que me llame el alvaro ese", askedZoneHistory);
-    assert.match(reply, /Le paso tus datos a Álvaro/i);
+    assert.match(reply, /Le paso tus datos a Rafael/i);
     assert.doesNotMatch(reply, /¿En qué zona/i);
   });
 
@@ -186,7 +186,7 @@ describe("buildOwnerListingReply contextual", () => {
       "en el centro de malaga es un piso de 3 habitaciones",
       askedZoneHistory,
     );
-    assert.match(reply, /Le paso tus datos a Álvaro/i);
+    assert.match(reply, /Le paso tus datos a Rafael/i);
     assert.doesNotMatch(reply, /¿En qué zona/i);
   });
 

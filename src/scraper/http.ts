@@ -4,7 +4,7 @@ const client = axios.create({
   timeout: 60000,
   headers: {
     "User-Agent":
-      "Mozilla/5.0 (compatible; InmobiliariaBazanBot/1.0; +https://www.inmobiliariabazan.com)",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
  Accept: "text/html,application/xhtml+xml",
     "Accept-Language": "es-ES,es;q=0.9",
   },

@@ -1,5 +1,5 @@
 import { getDb } from "../db/database.js";
-import { sanitizePropertyRef } from "../utils/propertyRef.js";
+import { catalogPropertyRef, sanitizePropertyRef } from "../utils/propertyRef.js";
 
 export type PortalListingOrigin = "idealista" | "fotocasa" | "pisos" | "indomio" | "habitaclia" | "milanuncios";
 
@@ -47,7 +47,7 @@ export function rememberPortalListing(
   externalId: string,
   propertyRef: string | null | undefined
 ): void {
-  const ref = sanitizePropertyRef(propertyRef);
+  const ref = catalogPropertyRef(propertyRef);
   const id = externalId.trim();
   const p = portal.trim().toLowerCase();
   if (!ref || !id || !p) return;
@@ -74,7 +74,7 @@ export function lookupPortalListing(portal: string, externalId: string): string 
        WHERE portal = ? AND external_id = ? LIMIT 1`
     )
     .get(p, id) as { ref?: string } | undefined;
-  const direct = sanitizePropertyRef(row?.ref);
+  const direct = catalogPropertyRef(row?.ref);
   if (direct) return direct;
   // pisos.com a veces se indexa solo con el id largo sin sufijo _oficina
   if (p === "pisos" && id.includes("_")) {
@@ -85,7 +85,7 @@ export function lookupPortalListing(portal: string, externalId: string): string 
          WHERE portal = ? AND external_id = ? LIMIT 1`
       )
       .get(p, base) as { ref?: string } | undefined;
-    return sanitizePropertyRef(row2?.ref) ?? null;
+    return catalogPropertyRef(row2?.ref) ?? null;
   }
   return null;
 }
@@ -93,7 +93,9 @@ export function lookupPortalListing(portal: string, externalId: string): string 
 /** Detecta portal + id de anuncio en URL o texto. */
 export function extractPortalAdRef(text: string): { portal: PortalListingOrigin; externalId: string } | null {
   const idealista =
-    text.match(/idealista\.com\/inmueble\/(\d{6,12})/i) ?? text.match(/\bCod\.\s*(\d{6,12})\b/i);
+    text.match(/idealista\.com\/(?:pro\/[\w-]+\/)?inmueble\/(\d{6,12})/i) ??
+    text.match(/idealista\.com\/[^\s\]"'<>]*\/inmueble\/(\d{6,12})/i) ??
+    text.match(/\bCod\.\s*(\d{6,12})\b/i);
   if (idealista?.[1]) return { portal: "idealista", externalId: idealista[1] };
 
   const fotocasa = text.match(/fotocasa\.(?:es|pro)\/[^\s\]"'<>]*?\/(\d{6,12})(?:\/|\b)/i);

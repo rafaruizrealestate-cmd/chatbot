@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { isGenericWhatsAppOpener, buildWhatsAppOpenerReply } from "./greeting.js";
+import { isGenericWhatsAppOpener, buildWhatsAppOpenerReply, shouldMentionAgentToCustomer } from "./greeting.js";
 
 describe("isGenericWhatsAppOpener", () => {
   it("detecta saludos puros", () => {
@@ -20,6 +20,21 @@ describe("isGenericWhatsAppOpener", () => {
       isGenericWhatsAppOpener("hola busco piso en malaga en alquiler"),
       false,
     );
+  });
+
+  it("no trata consulta de viviendas como saludo", () => {
+    assert.equal(isGenericWhatsAppOpener("viviendas más baratas"), false);
+  });
+});
+
+describe("shouldMentionAgentToCustomer", () => {
+  it("no suelta el comercial solo porque ya hay nombre", () => {
+    assert.equal(shouldMentionAgentToCustomer(null, false, "Rafa", "piso"), false);
+  });
+
+  it("sí lo menciona si pide visita o hay ficha", () => {
+    assert.equal(shouldMentionAgentToCustomer(null, false, "Rafa", "quiero visita"), true);
+    assert.equal(shouldMentionAgentToCustomer("111673415", true, null, "ok"), true);
   });
 });
 
